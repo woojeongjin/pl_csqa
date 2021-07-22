@@ -1,8 +1,11 @@
 # pytorch-lightning-transformers [Medium article](https://towardsdatascience.com/how-to-fine-tune-bert-with-pytorch-lightning-ba3ad2f928d2)
 
+
+Original code is from https://github.com/sobamchan/pytorch-lightning-transformers.git
+
 ## Setup
 ```bash
-$ git clone https://github.com/sobamchan/pytorch-lightning-transformers.git
+$ git clone https://github.com/woojeongjin/pl_csqa.git
 $ cd pytorch-lightning-transformers
 $ pipenv install
 $ pipenv shell

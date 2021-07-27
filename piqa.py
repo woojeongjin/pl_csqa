@@ -581,7 +581,7 @@ if __name__ == "__main__":
     parser.add_argument('--output_dir', type=str, default=None,
                         help='Load the model (usually the fine-tuned model).')
                         
-    # srun --gres=gpu:8000:1 python piqa.py --gpus 1 --load /home/woojeong2/vokenization/snap/vlpretrain/bert_vector_1e-5/BEST.pth_lang --output_dir piqa --seed 42
+    # srun --gres=gpu:8000:1 python piqa.py --gpus 1  --output_dir piqa_test --seed 42 --model-type roberta-large
     args = parser.parse_args()
 
     # seed = args.seed if args.seed else random.randint(1, 100)
@@ -630,4 +630,4 @@ if __name__ == "__main__":
     model = Model(args)
 
     trainer.fit(model)
-    # trainer.test()
+    trainer.test()

@@ -6,6 +6,8 @@ import random
 
 import numpy as np
 
+import scipy.io
+
 import lineflow.datasets as lfds
 from transformers import BertModel, BertTokenizer, RobertaTokenizer, RobertaModel
 from transformers import AdamW, get_linear_schedule_with_warmup
@@ -21,8 +23,8 @@ import json
 from functools import lru_cache
 
 MAX_LEN = 128
-NUM_LABELS = 5
-label_map = {"A": 0, "B": 1, "C": 2, "D": 3, "E": 4}
+NUM_LABELS = 4
+label_map = {"A": 0, "B": 1, "C": 2, "D": 3}
 
 model_class_dict = {
         "bert-base-uncased": BertModel,
@@ -38,7 +40,7 @@ tokenizer_dict = {
         "roberta-large": RobertaTokenizer.from_pretrained("roberta-large")
         }
 
-class CSQADataset:
+class FITBDataset:
     def __init__(self, path: str, tokenizer, args ):
         """
         :param split: train, valid, test
@@ -50,17 +52,20 @@ class CSQADataset:
         """
         self.tokenizer = tokenizer
         self.data = []
+
         with open(path, 'r') as f:
             data_pre = [json.loads(line) for line in f.readlines()]
         for x in data_pre:
-            answer_key = x["answerKey"] 
-            options = {choice["label"]: choice["text"] for choice in x["question"]["choices"]}
-            stem = x["question"]["stem"]
+            answer_key = x["label"] 
+            options = x['options']
+            question_a = x['question_a']
+            question_b = x['question_b']
             self.data.append({
                 "id": x["id"],
                 "answer_key": answer_key,
                 "options": options,
-                "stem": stem
+                "question_a" : question_a,
+                "question_b" : question_b,
             })
         self.args = args
 
@@ -72,11 +77,18 @@ class CSQADataset:
         choices_features = []
 
         for key, option in x["options"].items():
-            text_a = x["stem"]
-            text_b = option
+            
+            if len(x['question_a']) == 0:
+                text = option + x['question_b']
+            elif len(x['question_b']) == 0:
+                text = x['question_a'] + option
+            else:
+                text = x['question_a'] + option + x['question_b']
+
+        
+
             inputs = self.tokenizer.encode_plus(
-                    text_a,
-                    text_b,
+                    text,
                     add_special_tokens=True,
                     max_length=MAX_LEN,
                     truncation=True,
@@ -237,9 +249,9 @@ def preprocess(tokenizer: BertTokenizer, x: Dict) -> Dict:
 
 def get_dataloader(model_type, batch_size, args):
     tokenizer = tokenizer_dict[model_type]
-    train = CSQADataset('csqa/train_ih.jsonl', tokenizer, args)
-    val = CSQADataset('csqa/dev_rand_split.jsonl', tokenizer, args)
-    test = CSQADataset('csqa/test_ih.jsonl', tokenizer, args)
+    train = FITBDataset('fitb/train_ih.jsonl', tokenizer, args)
+    val = FITBDataset('fitb/valid_ih.jsonl', tokenizer, args)
+    test = FITBDataset('fitb/test.jsonl', tokenizer, args)
     # with open('csqa/dev_rand_split.jsonl', 'r') as f:
     #     val_pre = [json.loads(line) for line in f.readlines()]
     
@@ -596,16 +608,14 @@ if __name__ == "__main__":
     parser.add_argument("--learning-rate", type=float, default=5e-5)
     parser.add_argument("--weight-decay", type=float, default=0.01)
     parser.add_argument("--adam-eps", type=float, default=1e-06)
-    parser.add_argument("--warmup-steps", type=int, default=150)
+    parser.add_argument("--warmup-steps", type=int, default=0)
     parser.add_argument('--load', type=str, default=None,
                         help='Load the model (usually the fine-tuned model).')
     parser.add_argument('--output_dir', type=str, default=None,
                         help='Load the model (usually the fine-tuned model).')
                         
-    # srun --gres=gpu:8000:1 --nodelist ink-nova python csqa.py --gpus 1 --load /home/woojeong2/vok_pretraining/snap/vlpretrain/bert_resnext_combined0_100k/BEST.pth_lang --output_dir combine0 --seed 42
-    # /home/woojeong2/vok_pretraining/snap/vlpretrain/bert_resnext_combined03_100k_5e-5/best/pytorch_model.bin
-    # CUDA_VISIBLE_DEVICES=8 python csqa.py --gpus 1 --load /home/woojeong2/vok_pretraining/snap/vlpretrain/bert_resnext_combined0_100k/BEST.pth_lang --output_dir combine0 --seed 42
-    # srun --gres=gpu:8000:1 python csqa.py --gpus 1 --load /home/woojeong2/vokenization/snap/vlpretrain/bert_vector_1e-5/BEST.pth_lang --output_dir vector_1e-5_42 --seed 42
+    # srun --gres=gpu:8000:1 --nodelist ink-nova python fitb.py --gpus 1 --load /home/woojeong2/vok_pretraining/snap/vlpretrain/bert_resnext_combined0_100k/BEST.pth_lang --output_dir combine0 --seed 42
+ 
     args = parser.parse_args()
 
     # seed = args.seed if args.seed else random.randint(1, 100)

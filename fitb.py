@@ -332,7 +332,11 @@ class Model(pl.LightningModule):
         self.model = bert.to("cuda:0")
         if args.load is not None:
             print('loaded')
-            state_dict = torch.load(args.load, map_location="cuda:0")
+            
+            if args.test_only:
+                state_dict = torch.load(args.load, map_location="cuda:0")['state_dict']
+            else:
+                state_dict = torch.load(args.load, map_location="cuda:0")
 
             new_state_dict = {}
             for key, value in state_dict.items():        # If the ddp state_dict is saved
@@ -341,6 +345,8 @@ class Model(pl.LightningModule):
                         new_state_dict[key[len("module.vl"):]] = state_dict[key]    
                     elif key.startswith("module."):
                         new_state_dict[key[len("module."):]] = state_dict[key]
+                    elif key.startswith("model."):
+                        new_state_dict[key[len("model."):]] = state_dict[key]
                     elif key.startswith("encoder."):
                         new_state_dict["bert."+key] = state_dict[key]
                     elif key.startswith("embeddings."):
@@ -513,7 +519,7 @@ class Model(pl.LightningModule):
                 "test_loss": loss,
                 "correct_count": correct_count,
                 "batch_size": batch_size,
-                "ids": ids,
+                "ids": ids.cpu().numpy(),
                 "predict": labels_hat.cpu().numpy(),
                 "labels": labels.cpu().numpy()
                 })
@@ -529,14 +535,16 @@ class Model(pl.LightningModule):
 
             results = []
             for out in outputs:
+                # print(out['ids'], out['predict'])
                 for i, idd in enumerate(out['ids']):
-                    results.append({'id': idd, 'pred': int(out['predict'][i]), 'label': int(out['labels'][i])})
-            with open('pred_bert.jsonl', 'w') as outfile:
-                for entry in results:
-                    json.dump(entry, outfile)
-                    outfile.write('\n')
+                    results.append({'id': int(idd), 'pred': int(out['predict'][i]), 'label': int(out['labels'][i])})
+            # print(results[0])
+            # with open('pred_robertalarge_fitb.jsonl', 'w') as outfile:
+            #     for entry in results:
+            #         json.dump(entry, outfile)
+            #         outfile.write('\n')
 
-            with open('pred_robertalarge5e-5.jsonl' ,'r')  as f:
+            with open('pred_robertalarge_fitb.jsonl' ,'r')  as f:
                 roberta = []
                 for d in f:
                     roberta.append(json.loads(d))
@@ -551,19 +559,7 @@ class Model(pl.LightningModule):
 
             print("easy: ", np.mean(easy), 'hard:', np.mean(hard))
 
-            with open('pred_robertalarge2.jsonl' ,'r')  as f:
-                roberta = []
-                for d in f:
-                    roberta.append(json.loads(d))
-            easy = []
-            hard = []
-            for res, rob in zip(results, roberta):
-                assert res['id'] == rob['id']
-                if int(rob['pred']) == int(rob['label']):
-                    easy.append(int(res['pred']) == int(res['label']))
-                else:
-                    hard.append(int(res['pred']) == int(res['label'])) 
-            print("second one easy: ", np.mean(easy), 'hard:', np.mean(hard))
+
         else:
             test_acc = sum([out["correct_count"] for out in outputs]).float() / sum(out["batch_size"] for out in outputs)
             test_loss = sum([out["test_loss"] for out in outputs]) / len(outputs)
@@ -598,6 +594,7 @@ if __name__ == "__main__":
     parser.add_argument("--gpus", type=int, default=2)
     parser.add_argument("--seed", type=int, default=9595)
     parser.add_argument("--test-run", action="store_true")
+    parser.add_argument("--test_only", action="store_true")
     parser.add_argument("--distributed-backend", type=str, default="dp")
     parser.add_argument("--model-type", type=str, default="bert-base-uncased")
     parser.add_argument("--patience", type=int, default=3)
@@ -663,5 +660,9 @@ if __name__ == "__main__":
 
     model = Model(args)
 
-    trainer.fit(model)
-    trainer.test()
+    if args.test_only:
+        # model = model.load_from_checkpoint(args.ckpt)
+        trainer.test(model)
+    else:
+        trainer.fit(model)
+        trainer.test()

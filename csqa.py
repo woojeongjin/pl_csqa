@@ -1,3 +1,4 @@
+from os import stat
 from typing import Dict
 from functools import partial
 from collections import OrderedDict
@@ -17,16 +18,18 @@ from torch.nn import CrossEntropyLoss
 from torch.utils.data import DataLoader, SequentialSampler, RandomSampler
 import pytorch_lightning as pl
 from pytorch_lightning.callbacks import EarlyStopping
+
 import json
 from functools import lru_cache
 
-MAX_LEN = 128
+MAX_LEN = 64
 NUM_LABELS = 5
 label_map = {"A": 0, "B": 1, "C": 2, "D": 3, "E": 4}
 
 model_class_dict = {
         "bert-base-uncased": BertModel,
         "bert-large-uncased": BertModel,
+        "bert-base-cased": BertModel,
         "roberta-base": RobertaModel,
         "roberta-large": RobertaModel,
         }
@@ -34,6 +37,7 @@ tokenizer_dict = {
         # "bert-base-uncased": BertTokenizer.from_pretrained("bert-base-uncased", do_lower_case=True, return_token_type_ids=True),
         "bert-base-uncased": BertTokenizer.from_pretrained("bert-base-uncased", do_lower_case=True, return_token_type_ids=True),
         "bert-large-uncased": BertTokenizer.from_pretrained("bert-large-uncased", do_lower_case=True, return_token_type_ids=True),
+        "bert-base-cased": BertTokenizer.from_pretrained("bert-base-cased", do_lower_case=True, return_token_type_ids=True),
         "roberta-base": RobertaTokenizer.from_pretrained("roberta-base"),
         "roberta-large": RobertaTokenizer.from_pretrained("roberta-large")
         }
@@ -81,6 +85,14 @@ class CSQADataset:
                     max_length=MAX_LEN,
                     truncation=True,
                     )
+            
+            # inputs = self.tokenizer.encode_plus(
+            #         text_a + " "+ text_b,
+            #         # text_b,
+            #         add_special_tokens=True,
+            #         max_length=MAX_LEN,
+            #         truncation=True,
+            #         )
             
 
             input_ids = inputs["input_ids"]
@@ -320,7 +332,10 @@ class Model(pl.LightningModule):
         self.model = bert.to("cuda:0")
         if args.load is not None:
             print('loaded')
+            
             state_dict = torch.load(args.load, map_location="cuda:0")
+            if 'state_dict' in  state_dict.keys():
+                state_dict = state_dict['state_dict']
 
             new_state_dict = {}
             for key, value in state_dict.items():        # If the ddp state_dict is saved
@@ -574,10 +589,11 @@ class Model(pl.LightningModule):
 
 
 def set_seed(seed):
-    random.seed(seed)
-    np.random.seed(seed)
-    torch.manual_seed(seed)
-    torch.cuda.manual_seed_all(seed)
+    # random.seed(seed)
+    # np.random.seed(seed)
+    # torch.manual_seed(seed)
+    # torch.cuda.manual_seed_all(seed)
+    pl.utilities.seed.seed_everything(seed)
 
 
 if __name__ == "__main__":
@@ -605,7 +621,13 @@ if __name__ == "__main__":
     # srun --gres=gpu:8000:1 --nodelist ink-nova python csqa.py --gpus 1 --load /home/woojeong2/vok_pretraining/snap/vlpretrain/bert_resnext_combined0_100k/BEST.pth_lang --output_dir combine0 --seed 42
     # /home/woojeong2/vok_pretraining/snap/vlpretrain/bert_resnext_combined03_100k_5e-5/best/pytorch_model.bin
     # CUDA_VISIBLE_DEVICES=8 python csqa.py --gpus 1 --load /home/woojeong2/vok_pretraining/snap/vlpretrain/bert_resnext_combined0_100k/BEST.pth_lang --output_dir combine0 --seed 42
-    # srun --gres=gpu:8000:1 python csqa.py --gpus 1 --load /home/woojeong2/vokenization/snap/vlpretrain/bert_vector_1e-5/BEST.pth_lang --output_dir vector_1e-5_42 --seed 42
+    # srun --gres=gpu:8000:1 python csqa.py --gpus 1 --load /home/woojeong2/vok_pretraining/snap/vlpretrain/bert_resnext_combined09_wiki_book_100k/BEST.pth_lang --output_dir res7 --seed 42
+    # sleep 7h && srun --gres=gpu:8000:1 --nodelist ink-ruby python csqa.py --gpus 1 --load /home/woojeong2/vok_pretraining/snap/vlpretrain/bert_resnext_combined03_wiki_book_200k/BEST.pth_lang --output_dir wiki_book_03 --seed 42
+    # srun --gres=gpu:8000:1 python csqa.py --gpus 1 --load /home/woojeong2/VidLanKD/snap/bert/wiki_bert_base_wiki_book_10/checkpoint-epoch0009/pytorch_model.bin --output_dir res6 --seed 42 
+    # srun --gres=gpu:8000:1 python csqa.py --gpus 1 --load /home/woojeong2/vok_pretraining/snap/vlpretrain/bert_resnext_combined09_wiki_book_100k/BEST.pth_lang --output_dir res4
+    # srun --gres=gpu:1 python csqa.py --gpus 1 --load /home/woojeong2/VidLanKD/snap/bert/vlbert_large_continue/checkpoint-epoch0000/pytorch_model.bin --output_dir ress0
+
+    # srun --gres=gpu:2 python csqa.py --gpus 2 --load /home/woojeong2/vok_pretraining/snap/vlpretrain/bert_resnext_combined09_wiki_book_100k/BEST.pth_lang --output_dir res4 --batch-size 16
     args = parser.parse_args()
 
     # seed = args.seed if args.seed else random.randint(1, 100)
@@ -627,6 +649,7 @@ if __name__ == "__main__":
         monitor="val_loss",
         mode="min",
         save_top_k=20,
+        verbose=True,
     )
 
     if args.test_run:

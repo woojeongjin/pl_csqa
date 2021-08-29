@@ -22,7 +22,7 @@ from pytorch_lightning.callbacks import EarlyStopping
 import json
 from functools import lru_cache
 
-MAX_LEN = 128
+MAX_LEN = 64
 NUM_LABELS = 4
 label_map = {"A": 0, "B": 1, "C": 2, "D": 3}
 
@@ -79,11 +79,11 @@ class FITBDataset:
         for key, option in x["options"].items():
             
             if len(x['question_a']) == 0:
-                text = option + x['question_b']
+                text = option + " " + x['question_b']
             elif len(x['question_b']) == 0:
-                text = x['question_a'] + option
+                text = x['question_a'] + " " + option
             else:
-                text = x['question_a'] + option + x['question_b']
+                text = x['question_a'] + " " + option + " " + x['question_b']
 
         
 
@@ -582,10 +582,11 @@ class Model(pl.LightningModule):
 
 
 def set_seed(seed):
-    random.seed(seed)
-    np.random.seed(seed)
-    torch.manual_seed(seed)
-    torch.cuda.manual_seed_all(seed)
+    # random.seed(seed)
+    # np.random.seed(seed)
+    # torch.manual_seed(seed)
+    # torch.cuda.manual_seed_all(seed)
+    pl.utilities.seed.seed_everything(seed)
 
 
 if __name__ == "__main__":
@@ -611,7 +612,7 @@ if __name__ == "__main__":
     parser.add_argument('--output_dir', type=str, default=None,
                         help='Load the model (usually the fine-tuned model).')
                         
-    # srun --gres=gpu:8000:1 --nodelist ink-nova python fitb.py --gpus 1 --load /home/woojeong2/vok_pretraining/snap/vlpretrain/bert_resnext_combined0_100k/BEST.pth_lang --output_dir combine0 --seed 42
+    # srun --gres=gpu:8000:1 --nodelist ink-nova python fitb.py --gpus 1 --load /home/woojeong2/vok_pretraining/snap/vlpretrain/bert_resnext_combined03_100k_5e-5/BEST.pth_lang --output_dir combine3 --seed 42
  
     args = parser.parse_args()
 

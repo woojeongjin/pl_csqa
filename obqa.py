@@ -568,10 +568,11 @@ class Model(pl.LightningModule):
 
 
 def set_seed(seed):
-    random.seed(seed)
-    np.random.seed(seed)
-    torch.manual_seed(seed)
-    torch.cuda.manual_seed_all(seed)
+    # random.seed(seed)
+    # np.random.seed(seed)
+    # torch.manual_seed(seed)
+    # torch.cuda.manual_seed_all(seed)
+    pl.utilities.seed.seed_everything(seed)
 
 
 if __name__ == "__main__":
@@ -623,6 +624,7 @@ if __name__ == "__main__":
         monitor="val_loss",
         mode="min",
         save_top_k=20,
+        verbose=True,
     )
 
     if args.test_run:

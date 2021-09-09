@@ -22,8 +22,9 @@ import json
 from functools import lru_cache
 
 from models import Model
+from params import parse_args
 
-MAX_LEN = 64
+MAX_LEN = 50
 NUM_LABELS = 4
 label_map = {"A": 0, "B": 1, "C": 2, "D": 3}
 
@@ -302,49 +303,19 @@ class Model_OBQA(Model):
         return self._test_dataloader
 
 
-def set_seed(seed):
-    # random.seed(seed)
-    # np.random.seed(seed)
-    # torch.manual_seed(seed)
-    # torch.cuda.manual_seed_all(seed)
-    pl.utilities.seed.seed_everything(seed)
-
 
 if __name__ == "__main__":
-    parser = ArgumentParser()
-    parser.add_argument("--note", type=str, default=None)
-    parser.add_argument("--gpus", type=int, default=1)
-    parser.add_argument("--seed", type=int, default=9595)
-    parser.add_argument("--test-run", action="store_true")
-    parser.add_argument("--distributed-backend", type=str, default="dp")
-    parser.add_argument("--model-type", type=str, default="bert-base-uncased")
-    parser.add_argument("--patience", type=int, default=3)
-    parser.add_argument("--val-check-interval", type=float, default=0.9)
-    parser.add_argument("--batch-size", type=int, default=32)
-    parser.add_argument("--max-nb-epochs", type=int, default=15)
-    parser.add_argument("--min-nb-epochs", type=int, default=1)
-    parser.add_argument("--learning-rate", type=float, default=5e-5)
-    parser.add_argument("--weight-decay", type=float, default=0.01)
-    parser.add_argument("--adam-eps", type=float, default=1e-06)
-    parser.add_argument("--warmup-steps", type=int, default=150)
-    parser.add_argument('--load', type=str, default=None,
-                        help='Load the model (usually the fine-tuned model).')
-    parser.add_argument('--output_dir', type=str, default="res",
-                        help='Load the model (usually the fine-tuned model).')
-    parser.add_argument("--cl", action="store_true")
-    parser.add_argument("--temp", type=float, default=0.05)
-                        
     # srun --gres=gpu:8000:1 --nodelist ink-nova python csqa.py --gpus 1 --load /home/woojeong2/vok_pretraining/snap/vlpretrain/bert_resnext_combined0_100k/BEST.pth_lang --output_dir combine0 --seed 42
     # /home/woojeong2/vok_pretraining/snap/vlpretrain/bert_resnext_combined03_100k_5e-5/best/pytorch_model.bin
     # CUDA_VISIBLE_DEVICES=8 python csqa.py --gpus 1 --load /home/woojeong2/vok_pretraining/snap/vlpretrain/bert_resnext_combined0_100k/BEST.pth_lang --output_dir combine0 --seed 42
     # srun --gres=gpu:8000:1 python csqa.py --gpus 1 --load /home/woojeong2/vok_pretraining/snap/vlpretrain/bert_resnext_combined09_wiki_book_100k/BEST.pth_lang --output_dir res7 --seed 42
     # sleep 7h && srun --gres=gpu:8000:1 --nodelist ink-ruby python csqa.py --gpus 1 --load /home/woojeong2/vok_pretraining/snap/vlpretrain/bert_resnext_combined03_wiki_book_200k/BEST.pth_lang --output_dir wiki_book_03 --seed 42
     # srun --gres=gpu:8000:1 python csqa.py --gpus 1 --load /home/woojeong2/VidLanKD/snap/bert/wiki_bert_base_wiki_book_10/checkpoint-epoch0009/pytorch_model.bin --output_dir res6 --seed 42 
-    args = parser.parse_args()
+    args = parse_args()
 
     # seed = args.seed if args.seed else random.randint(1, 100)
     # args.seed = seed
-    set_seed(args.seed)
+
 
     # early_stop_callback = EarlyStopping(
     #         monitor="val_loss",

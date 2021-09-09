@@ -12,6 +12,7 @@ from torch.utils.data import DataLoader, SequentialSampler, RandomSampler
 import pytorch_lightning as pl
 
 from models import Model
+from params import parse_args
 
 import json
 
@@ -246,36 +247,9 @@ class Model_riddlesense(Model):
         return self._test_dataloader
 
 
-def set_seed(seed):
-    pl.utilities.seed.seed_everything(seed)
-
-
 if __name__ == "__main__":
-    parser = ArgumentParser()
-    parser.add_argument("--note", type=str, default=None)
-    parser.add_argument("--gpus", type=int, default=1)
-    parser.add_argument("--seed", type=int, default=9595)
-    parser.add_argument("--test-run", action="store_true")
-    parser.add_argument("--distributed-backend", type=str, default="dp")
-    parser.add_argument("--model", type=str, default="bert-base-uncased")
-    parser.add_argument("--output_dir", type=str, default="csqa-bert-base")
-    parser.add_argument("--patience", type=int, default=3)
-    parser.add_argument("--val-check-interval", type=float, default=0.5)
-    parser.add_argument("--batch-size", type=int, default=8)
-    parser.add_argument("--max-nb-epochs", type=int, default=15)
-    parser.add_argument("--min-nb-epochs", type=int, default=1)
-    parser.add_argument("--learning-rate", type=float, default=5e-5)
-    parser.add_argument("--weight-decay", type=float, default=0.01)
-    parser.add_argument("--adam-eps", type=float, default=1e-06)
-    parser.add_argument("--warmup-steps", type=int, default=150)
-    parser.add_argument('--load', type=str, default=None,
-                        help='Load the model (usually the fine-tuned model).')
-    parser.add_argument("--cl", action="store_true")
-    parser.add_argument("--temp", type=float, default=0.05)
 
-    args = parser.parse_args()
-
-    set_seed(args.seed)
+    args = parse_args()
 
     checkpoint_callback = pl.callbacks.ModelCheckpoint(
         dirpath=args.output_dir,

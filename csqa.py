@@ -20,6 +20,7 @@ import pytorch_lightning as pl
 from pytorch_lightning.callbacks import EarlyStopping
 
 from models import Model
+from params import parse_args
 
 import json
 from functools import lru_cache
@@ -298,37 +299,8 @@ def get_dataloader(model_type, batch_size, args):
 
 
 
-def set_seed(seed):
-    # random.seed(seed)
-    # np.random.seed(seed)
-    # torch.manual_seed(seed)
-    # torch.cuda.manual_seed_all(seed)
-    pl.utilities.seed.seed_everything(seed)
-
-
 if __name__ == "__main__":
-    parser = ArgumentParser()
-    parser.add_argument("--note", type=str, default=None)
-    parser.add_argument("--gpus", type=int, default=1)
-    parser.add_argument("--seed", type=int, default=9595)
-    parser.add_argument("--test-run", action="store_true")
-    parser.add_argument("--distributed-backend", type=str, default="dp")
-    parser.add_argument("--model-type", type=str, default="bert-base-uncased")
-    parser.add_argument("--patience", type=int, default=3)
-    parser.add_argument("--val-check-interval", type=float, default=0.9)
-    parser.add_argument("--batch-size", type=int, default=32)
-    parser.add_argument("--max-nb-epochs", type=int, default=15)
-    parser.add_argument("--min-nb-epochs", type=int, default=1)
-    parser.add_argument("--learning-rate", type=float, default=5e-5)
-    parser.add_argument("--weight-decay", type=float, default=0.01)
-    parser.add_argument("--adam-eps", type=float, default=1e-06)
-    parser.add_argument("--warmup-steps", type=int, default=150)
-    parser.add_argument('--load', type=str, default=None,
-                        help='Load the model (usually the fine-tuned model).')
-    parser.add_argument('--output_dir', type=str, default=None,
-                        help='Load the model (usually the fine-tuned model).')
-    parser.add_argument("--cl", action="store_true")
-    parser.add_argument("--temp", type=float, default=0.05)
+
                         
     # srun --gres=gpu:8000:1 --nodelist ink-nova python csqa.py --gpus 1 --load /home/woojeong2/vok_pretraining/snap/vlpretrain/bert_resnext_combined0_100k/BEST.pth_lang --output_dir combine0 --seed 42
     # /home/woojeong2/vok_pretraining/snap/vlpretrain/bert_resnext_combined03_100k_5e-5/best/pytorch_model.bin
@@ -340,11 +312,8 @@ if __name__ == "__main__":
     # srun --gres=gpu:1 python csqa.py --gpus 1 --load /home/woojeong2/VidLanKD/snap/bert/vlbert_large_continue/checkpoint-epoch0000/pytorch_model.bin --output_dir ress0
 
     # srun --gres=gpu:2 python csqa.py --gpus 2 --load /home/woojeong2/vok_pretraining/snap/vlpretrain/bert_resnext_combined09_wiki_book_100k/BEST.pth_lang --output_dir res4 --batch-size 16
-    args = parser.parse_args()
+    args = parse_args()
 
-    # seed = args.seed if args.seed else random.randint(1, 100)
-    # args.seed = seed
-    set_seed(args.seed)
 
     # early_stop_callback = EarlyStopping(
     #         monitor="val_loss",

@@ -70,8 +70,8 @@ class BERT(nn.Module):
 
         pooled_output = outputs[1]
 
-        pooled_output = self.dropout(pooled_output)
         if not self.args.cl:
+            pooled_output = self.dropout(pooled_output)
             logits = self.classifier(pooled_output)
         else:
             logits = pooled_output
@@ -102,9 +102,9 @@ class RoBERTa(nn.Module):
                             head_mask=head_mask)
 
         pooled_output = outputs[1]
-
-        pooled_output = self.dropout(pooled_output)
+        
         if not self.args.cl:
+            pooled_output = self.dropout(pooled_output)
             logits = self.classifier(pooled_output)
         else:
             logits = pooled_output

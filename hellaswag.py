@@ -214,10 +214,6 @@ class Model_Hellaswag(Model):
             test_loss = sum([torch.mean(out["test_loss"].float()) for out in outputs]) / len(outputs)
 
             results = []
-            for out in outputs:
-                print(out)
-
-            results = []
             index = 0
             for out in outputs:
                 for i, idd in enumerate(out['predict']):

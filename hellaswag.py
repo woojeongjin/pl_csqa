@@ -156,7 +156,8 @@ class HellaswagDataset:
                     "attention_mask": attention_mask,
                     })
 
-        label = label_map.get(x["answer_key"], -1)
+        label = label_map.get(x["answer_key"])
+        print(label, x["answer_key"])
         label = torch.tensor(label).long()
         if "roberta" not in self.args.model_type:
             return {
@@ -215,24 +216,7 @@ class Model_Hellaswag(Model):
 
             results = []
             for out in outputs:
-                for i, idd in enumerate(out['ids']):
-                    results.append({'id': idd, 'pred': int(out['predict'][i]), 'label': int(out['labels'][i])})
-
-            with open('pred_roberta_large_hellaswag.jsonl' ,'r')  as f:
-                roberta = []
-                for d in f:
-                    roberta.append(json.loads(d))
-            easy = []
-            hard = []
-            for res, rob in zip(results, roberta):
-                assert res['id'] == rob['id']
-                if rob['pred'] == rob['label']:
-                    easy.append(res['pred'] == res['label'])
-                else:
-                    hard.append(res['pred'] == res['label']) 
-
-            print("easy: ", np.mean(easy), 'hard:', np.mean(hard))
-
+                print(out)
 
         else:
             test_acc = sum([out["correct_count"] for out in outputs]).float() / sum(out["batch_size"] for out in outputs)

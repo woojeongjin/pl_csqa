@@ -157,7 +157,6 @@ class HellaswagDataset:
                     })
 
         label = label_map.get(x["answer_key"])
-        print(label, x["answer_key"])
         label = torch.tensor(label).long()
         if "roberta" not in self.args.model_type:
             return {
@@ -215,9 +214,20 @@ class Model_Hellaswag(Model):
             test_loss = sum([torch.mean(out["test_loss"].float()) for out in outputs]) / len(outputs)
 
             results = []
+            index = 0
             for out in outputs:
-                print(out)
+                for i, idd in enumerate(out['predict']):
+                    results.append({'id': index, 'pred': int(out['predict'][i]), 'label': int(out['labels'][i])})
+                    index += 1
 
+            correct = 0
+            total = 0
+            for res in results:
+                if res['pred'] == res['label']:
+                    correct += 1
+                total += 1
+
+            print("acc: ", correct/total)
         else:
             test_acc = sum([out["correct_count"] for out in outputs]).float() / sum(out["batch_size"] for out in outputs)
             test_loss = sum([out["test_loss"] for out in outputs]) / len(outputs)

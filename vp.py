@@ -383,7 +383,7 @@ class Model_VP(Model):
                 "test_loss": loss,
                 "correct_count": correct_count,
                 "batch_size": batch_size,
-                "ids": ids,
+                "ids": ids.cpu().numpy(),
                 "predict": labels_hat.cpu().numpy(),
                 "labels": labels.cpu().numpy()
                 })
@@ -486,5 +486,5 @@ if __name__ == "__main__":
     train_dataloader, val_dataloader, test_dataloader = get_dataloader(args.model_type, args.batch_size, args)
     model = Model_VP(args, train_dataloader, val_dataloader, test_dataloader)
 
-    trainer.fit(model)
-    trainer.test()
+    # trainer.fit(model)
+    trainer.test(model)

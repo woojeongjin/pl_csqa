@@ -486,5 +486,5 @@ if __name__ == "__main__":
     train_dataloader, val_dataloader, test_dataloader = get_dataloader(args.model_type, args.batch_size, args)
     model = Model_VP(args, train_dataloader, val_dataloader, test_dataloader)
 
-    # trainer.fit(model)
-    trainer.test(model)
+    trainer.fit(model)
+    trainer.test()

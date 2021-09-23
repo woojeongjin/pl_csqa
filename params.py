@@ -25,7 +25,8 @@ def parse_args():
                         help='Load the model (usually the fine-tuned model).')
     parser.add_argument("--cl", action="store_true")
     parser.add_argument("--temp", type=float, default=0.05)
-                        
+    parser.add_argument("--low_20", action="store_true")       
+    parser.add_argument("--low_50", action="store_true")                       
 
     args = parser.parse_args()
 

@@ -183,7 +183,12 @@ class OBQADataset:
 
 def get_dataloader(model_type, batch_size, args):
     tokenizer = tokenizer_dict[model_type]
-    train = OBQADataset('obqa/train.jsonl', tokenizer, args)
+    if args.low_20:
+        train = OBQADataset('obqa/train_20.jsonl', tokenizer, args)
+    elif args.low_50:
+        train = OBQADataset('obqa/train_50.jsonl', tokenizer, args)
+    else:
+        train = OBQADataset('obqa/train.jsonl', tokenizer, args)
     val = OBQADataset('obqa/dev.jsonl', tokenizer, args)
     test = OBQADataset('obqa/test.jsonl', tokenizer, args)
     # with open('csqa/dev_rand_split.jsonl', 'r') as f:

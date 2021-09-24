@@ -191,7 +191,12 @@ class PIQADataset:
 
 def get_dataloader(model_type, batch_size, args):
     tokenizer = tokenizer_dict[model_type]
-    train = PIQADataset('piqa/train_ih.jsonl', 'piqa/train_ih-labels.lst', tokenizer, args)
+    if args.low_20:
+        train = PIQADataset('piqa/train_ih_20.jsonl', 'piqa/train_ih_20-labels.lst', tokenizer, args)
+    elif args.low_50:
+        train = PIQADataset('piqa/train_ih_50.jsonl', 'piqa/train_ih_50-labels.lst', tokenizer, args)
+    else:
+        train = PIQADataset('piqa/train_ih.jsonl', 'piqa/train_ih-labels.lst', tokenizer, args)
     val = PIQADataset('piqa/valid.jsonl', 'piqa/valid-labels.lst', tokenizer, args)
     test = PIQADataset('piqa/test_ih.jsonl', 'piqa/test_ih-labels.lst',tokenizer, args)
 

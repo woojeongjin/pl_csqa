@@ -192,6 +192,12 @@ class PIQADataset:
 def get_dataloader(model_type, batch_size, args):
     tokenizer = tokenizer_dict[model_type]
     train = PIQADataset('piqa/train_ih.jsonl', 'piqa/train_ih-labels.lst', tokenizer, args)
+
+    cutoff = int(len(train.data) * (args.percentage/100))
+    random.seed(42)
+    random.shuffle(train.data)
+    train.data = train.data[:cutoff]
+
     val = PIQADataset('piqa/valid.jsonl', 'piqa/valid-labels.lst', tokenizer, args)
     test = PIQADataset('piqa/test_ih.jsonl', 'piqa/test_ih-labels.lst',tokenizer, args)
 
@@ -248,45 +254,17 @@ class Model_PIQA(Model):
             results = []
             index = 0
             for out in outputs:
-                # print(out['ids'])
                 for i, idd in enumerate(out['predict']):
                     results.append({'id': index, 'pred': int(out['predict'][i]), 'label': int(out['labels'][i])})
                     index+=1
-            with open('pred_bert.jsonl', 'w') as outfile:
-                for entry in results:
-                    json.dump(entry, outfile)
-                    outfile.write('\n')
 
-            with open('pred_robertalarge_piqa.jsonl' ,'r')  as f:
-                roberta = []
-                for d in f:
-                    roberta.append(json.loads(d))
-            easy = []
-            hard = []
-            for res, rob in zip(results, roberta):
-                assert res['id'] == rob['id']
-                if rob['pred'] == rob['label']:
-                    easy.append(res['pred'] == res['label'])
-                else:
-                    hard.append(res['pred'] == res['label']) 
-
-            print("easy: ", np.mean(easy), 'hard:', np.mean(hard))
-
-            # with open('pred_robertalarge_piqa.jsonl' ,'r')  as f:
-            #     roberta = []
-            #     for d in f:
-            #         roberta.append(json.loads(d))
-            # easy = []
-            # hard = []
-            # for res, rob in zip(results, roberta):
-            #     assert res['id'] == rob['id']
-            #     if int(rob['pred']) == int(rob['label']):
-            #         easy.append(int(res['pred']) == int(res['label']))
-            #     else:
-            #         hard.append(int(res['pred']) == int(res['label'])) 
-            # print("second one easy: ", np.mean(easy), 'hard:', np.mean(hard))
-
-
+            correct = 0
+            total = 0
+            for res in results:
+                if res['pred'] == res['label']:
+                    correct += 1
+                total += 1
+            print("acc: ", correct/total)
         else:
             test_acc = sum([out["correct_count"] for out in outputs]).float() / sum(out["batch_size"] for out in outputs)
             test_loss = sum([out["test_loss"] for out in outputs]) / len(outputs)

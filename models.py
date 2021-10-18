@@ -116,7 +116,7 @@ class Model(pl.LightningModule):
 
     def __init__(self, args, train_dataloader, val_dataloader, test_dataloader ):
         super(Model, self).__init__()
-        self.hparams = args
+        self.save_hyperparameters(args)
         if args.cl:
             self.sim = Similarity(temp=args.temp)
 

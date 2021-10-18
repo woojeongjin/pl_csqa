@@ -39,7 +39,7 @@ tokenizer_dict = {
         }
 
 class HellaswagDataset:
-    def __init__(self, path: str, tokenizer, args ):
+    def __init__(self, path: str, tokenizer, args):
         """
         :param split: train, valid, test
         :param sources: The data sources to be loaded, separated by comma.
@@ -180,6 +180,8 @@ def get_dataloader(model_type, batch_size, args):
     val = HellaswagDataset('hellaswag/dev.jsonl', tokenizer, args)
     test = HellaswagDataset('hellaswag/test.jsonl', tokenizer, args)
 
+    cutoff = int(len(train.data) * (args.percentage/100))
+    train.data = train.data[:cutoff]
 
     train_dataloader = DataLoader(
             # train.map(preprocessor),
@@ -187,6 +189,7 @@ def get_dataloader(model_type, batch_size, args):
             sampler=RandomSampler(train),
             batch_size=batch_size
             )
+
     val_dataloader = DataLoader(
             # val.map(preprocessor),
             val,
@@ -304,6 +307,7 @@ if __name__ == "__main__":
                 )
 
     train_dataloader, val_dataloader, test_dataloader = get_dataloader(args.model_type, args.batch_size, args)
+
     model = Model_Hellaswag(args, train_dataloader, val_dataloader, test_dataloader)
 
     trainer.fit(model)

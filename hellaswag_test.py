@@ -24,9 +24,9 @@ from functools import lru_cache
 from models import Model
 from params import parse_args
 
-MAX_LEN = 50
+MAX_LEN = 64
 NUM_LABELS = 4
-label_map = {"A": 0, "B": 1, "C": 2, "D": 3}
+label_map = {"0": 0, "1": 1, "2": 2, "3": 3}
 
 
 tokenizer_dict = {
@@ -38,7 +38,7 @@ tokenizer_dict = {
         "roberta-large": RobertaTokenizer.from_pretrained("roberta-large")
         }
 
-class OBQADataset:
+class HellaswagDataset:
     def __init__(self, path: str, tokenizer, args ):
         """
         :param split: train, valid, test
@@ -53,14 +53,14 @@ class OBQADataset:
         with open(path, 'r') as f:
             data_pre = [json.loads(line) for line in f.readlines()]
         for x in data_pre:
-            answer_key = x["answerKey"] 
-            options = {choice["label"]: choice["text"] for choice in x["question"]["choices"]}
-            stem = x["question"]["stem"]
+            ctx = x["ctx"]
+            answer_key = x["label"]
+            options = {str(i): choice for i, choice in enumerate(x["endings"])}
             self.data.append({
-                "id": x["id"],
-                "answer_key": answer_key,
+                "id": x["ind"],
+                "answer_key": str(answer_key),
                 "options": options,
-                "stem": stem
+                "stem": ctx
             })
         self.args = args
 
@@ -156,7 +156,7 @@ class OBQADataset:
                     "attention_mask": attention_mask,
                     })
 
-        label = label_map.get(x["answer_key"], -1)
+        label = label_map.get(x["answer_key"])
         label = torch.tensor(label).long()
         if "roberta" not in self.args.model_type:
             return {
@@ -173,55 +173,13 @@ class OBQADataset:
                     "input_ids": torch.tensor([cf["input_ids"] for cf in choices_features]),
                     "attention_mask": torch.tensor([cf["attention_mask"] for cf in choices_features]),
                     }
-    # def shuffle(self):
-    #     random.seed(9595)
-    #     random.shuffle(self.data)
-
-
-
-
 
 def get_dataloader(model_type, batch_size, args):
     tokenizer = tokenizer_dict[model_type]
-    train = OBQADataset('obqa/train.jsonl', tokenizer, args)
+    train = HellaswagDataset('hellaswag/train.jsonl', tokenizer, args)
+    val = HellaswagDataset('hellaswag/dev.jsonl', tokenizer, args)
+    test = HellaswagDataset('hellaswag/test.jsonl', tokenizer, args)
 
-    cutoff = int(len(train.data) * (args.percentage/100))
-    random.seed(42)
-    random.shuffle(train.data)
-    train.data = train.data[:cutoff]
-
-    val = OBQADataset('obqa/dev.jsonl', tokenizer, args)
-    test = OBQADataset('obqa/test.jsonl', tokenizer, args)
-    # with open('csqa/dev_rand_split.jsonl', 'r') as f:
-    #     val_pre = [json.loads(line) for line in f.readlines()]
-    
-    # with open('csqa/train_ih.jsonl', 'r') as f:
-    #     train_pre = [json.loads(line) for line in f.readlines()]
-
-    # with open('csqa/test_ih.jsonl', 'r') as f:
-    #     test_pre = [json.loads(line) for line in f.readlines()]
-
-    # def read_data(data):
-    #     temp = []
-    #     for x in data:
-    #         answer_key = x["answerKey"] 
-    #         options = {choice["label"]: choice["text"] for choice in x["question"]["choices"]}
-    #         stem = x["question"]["stem"]
-    #         temp.append({
-    #             "id": x["id"],
-    #             "answer_key": answer_key,
-    #             "options": options,
-    #             "stem": stem
-    #         })
-    #     return temp
-    # train = lru_cache()(read_data(train_pre))
-    # val = lru_cache()(read_data(val_pre))
-    # test = lru_cache()(read_data(test_pre))
-    # train = lfds.CommonsenseQA("train")
-    # val = lfds.CommonsenseQA("dev")
-
-    
-    # preprocessor = partial(preprocess, tokenizer)
 
     train_dataloader = DataLoader(
             # train.map(preprocessor),
@@ -235,15 +193,7 @@ def get_dataloader(model_type, batch_size, args):
             sampler=SequentialSampler(val),
             batch_size=batch_size
             )
-    # train_loader = torch.utils.data.DataLoader(
-    #     dataset=train_tset,
-    #     batch_size=(args.batch_size // args.world_size),
-    #     shuffle=False,          # Will be shuffled in the sampler.
-    #     num_workers=max(args.num_workers // args.world_size, 1),
-    #     pin_memory=True,
-    #     sampler=train_sampler,
-    #     drop_last=True
-    # )
+
     test_dataloader = DataLoader(
             # test.map(preprocessor),
             test,
@@ -254,7 +204,7 @@ def get_dataloader(model_type, batch_size, args):
     return train_dataloader, val_dataloader, test_dataloader
 
 
-class Model_OBQA(Model):
+class Model_Hellaswag(Model):
 
     def test_epoch_end(self, outputs):
         if self.trainer.use_dp:
@@ -264,9 +214,11 @@ class Model_OBQA(Model):
             test_loss = sum([torch.mean(out["test_loss"].float()) for out in outputs]) / len(outputs)
 
             results = []
+            index = 0
             for out in outputs:
-                for i, idd in enumerate(out['ids']):
-                    results.append({'id': idd, 'pred': int(out['predict'][i]), 'label': int(out['labels'][i])})
+                for i, idd in enumerate(out['predict']):
+                    results.append({'id': index, 'pred': int(out['predict'][i]), 'label': int(out['labels'][i])})
+                    index += 1
 
             correct = 0
             total = 0
@@ -274,9 +226,8 @@ class Model_OBQA(Model):
                 if res['pred'] == res['label']:
                     correct += 1
                 total += 1
+
             print("acc: ", correct/total)
-
-
         else:
             test_acc = sum([out["correct_count"] for out in outputs]).float() / sum(out["batch_size"] for out in outputs)
             test_loss = sum([out["test_loss"] for out in outputs]) / len(outputs)
@@ -326,7 +277,7 @@ if __name__ == "__main__":
         filename= "{epoch}-{val_loss:.6f}",
         monitor="val_loss",
         mode="min",
-        save_top_k=1,
+        save_top_k=20,
         verbose=True,
     )
 
@@ -353,7 +304,7 @@ if __name__ == "__main__":
                 )
 
     train_dataloader, val_dataloader, test_dataloader = get_dataloader(args.model_type, args.batch_size, args)
-    model = Model_OBQA(args, train_dataloader, val_dataloader, test_dataloader)
+    model = Model_Hellaswag(args, train_dataloader, val_dataloader, test_dataloader)
 
     trainer.fit(model)
     trainer.test()

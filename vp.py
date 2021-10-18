@@ -182,6 +182,12 @@ class VPDataset:
 def get_dataloader(model_type, batch_size, args):
     tokenizer = tokenizer_dict[model_type]
     train = VPDataset('vp/train_ih.jsonl', tokenizer, args)
+
+    cutoff = int(len(train.data) * (args.percentage/100))
+    random.seed(42)
+    random.shuffle(train.data)
+    train.data = train.data[:cutoff]
+
     val = VPDataset('vp/valid_ih.jsonl', tokenizer, args)
     test = VPDataset('vp/test.jsonl', tokenizer, args)
     # with open('csqa/dev_rand_split.jsonl', 'r') as f:
@@ -405,7 +411,14 @@ class Model_VP(Model):
             #     for entry in results:
             #         json.dump(entry, outfile)
             #         outfile.write('\n')
+            correct = 0
+            total = 0
+            for res in results:
+                if res['pred'] == res['label']:
+                    correct += 1
+                total += 1
 
+            print("acc: ", correct/total)
 
 
         else:

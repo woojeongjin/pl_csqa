@@ -10,6 +10,7 @@ def parse_args():
     parser.add_argument("--test_only", action="store_true")
     parser.add_argument("--distributed-backend", type=str, default="dp")
     parser.add_argument("--model-type", type=str, default="bert-base-uncased")
+    parser.add_argument("--percentage", type=int, default=100)
     parser.add_argument("--patience", type=int, default=3)
     parser.add_argument("--val-check-interval", type=float, default=0.9)
     parser.add_argument("--batch-size", type=int, default=32)

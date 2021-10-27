@@ -197,6 +197,16 @@ def get_dataloader(model_type, batch_size, args):
         train = PIQADataset('piqa/train_ih_50.jsonl', 'piqa/train_ih_50-labels.lst', tokenizer, args)
     else:
         train = PIQADataset('piqa/train_ih.jsonl', 'piqa/train_ih-labels.lst', tokenizer, args)
+
+    cutoff = int(len(train.data) * (args.percentage/100))
+    random.seed(args.dataseed)
+    random.shuffle(train.data)
+    if args.shots != 0:
+        train.data = train.data[:args.shots]
+    else:
+        train.data = train.data[:cutoff]
+
+    
     val = PIQADataset('piqa/valid.jsonl', 'piqa/valid-labels.lst', tokenizer, args)
     test = PIQADataset('piqa/test_ih.jsonl', 'piqa/test_ih-labels.lst',tokenizer, args)
 

@@ -183,10 +183,17 @@ def get_dataloader(model_type, batch_size, args):
     tokenizer = tokenizer_dict[model_type]
     train = VPDataset('vp/train_ih.jsonl', tokenizer, args)
 
+    
     cutoff = int(len(train.data) * (args.percentage/100))
-    random.seed(42)
+    random.seed(args.dataseed)
     random.shuffle(train.data)
-    train.data = train.data[:cutoff]
+    if args.shots != 0:
+        train.data = train.data[:args.shots]
+    else:
+        train.data = train.data[:cutoff]
+
+    print(len(train.data))
+
 
     val = VPDataset('vp/valid_ih.jsonl', tokenizer, args)
     test = VPDataset('vp/test.jsonl', tokenizer, args)

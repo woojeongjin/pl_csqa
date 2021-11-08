@@ -419,6 +419,14 @@ class Model_VP(Model):
             #         json.dump(entry, outfile)
             #         outfile.write('\n')
 
+            correct = 0
+            total = 0
+            for res in results:
+                if res['pred'] == res['label']:
+                    correct += 1
+                total += 1
+
+            print("acc: ", correct / total)
 
 
         else:

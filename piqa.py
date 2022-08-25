@@ -7,9 +7,9 @@ import random
 import numpy as np
 
 import lineflow.datasets as lfds
-from transformers import BertModel, BertTokenizer, RobertaTokenizer, RobertaModel
+from transformers import BertModel, BertTokenizer, RobertaTokenizer, RobertaModel, CLIPTokenizer
 from transformers import AdamW, get_linear_schedule_with_warmup
-
+import transformers
 
 import torch
 import torch.nn as nn
@@ -23,7 +23,11 @@ from functools import lru_cache
 from models import Model
 from params import parse_args
 
-MAX_LEN = 128
+transformers.logging.set_verbosity_error()
+
+# MAX_LEN = 128
+# MAX_LEN = 90
+MAX_LEN = 76
 # NUM_LABELS = 5
 # label_map = {"A": 0, "B": 1, "C": 2, "D": 3, "E": 4}
 
@@ -36,7 +40,8 @@ tokenizer_dict = {
         "bert-base-uncased": BertTokenizer.from_pretrained("bert-base-uncased", do_lower_case=True, return_token_type_ids=True),
         "bert-large-uncased": BertTokenizer.from_pretrained("bert-large-uncased", do_lower_case=True, return_token_type_ids=True),
         "roberta-base": RobertaTokenizer.from_pretrained("roberta-base"),
-        "roberta-large": RobertaTokenizer.from_pretrained("roberta-large")
+        "roberta-large": RobertaTokenizer.from_pretrained("roberta-large"),
+        "clip": CLIPTokenizer.from_pretrained("openai/clip-vit-large-patch14")
         }
 
 class PIQADataset:
@@ -87,7 +92,7 @@ class PIQADataset:
 
 
             input_ids = inputs["input_ids"]
-            if "roberta" not in self.args.model_type:
+            if "bert" in  self.args.model_type:
                 token_type_ids = inputs["token_type_ids"]
             attention_mask = [1] * len(input_ids)
 
@@ -95,14 +100,14 @@ class PIQADataset:
             padding_length = MAX_LEN - len(input_ids)
             input_ids = input_ids + ([pad_token_id] * padding_length)
             attention_mask = attention_mask + ([0] * padding_length)
-            if "roberta" not in self.args.model_type:
+            if "bert" in self.args.model_type:
                 token_type_ids = token_type_ids + ([pad_token_id] * padding_length)
 
             assert len(input_ids) == MAX_LEN, "Error with input length {} vs {}".format(len(input_ids), MAX_LEN)
             assert len(attention_mask) == MAX_LEN, "Error with input length {} vs {}".format(len(attention_mask), MAX_LEN)
-            if "roberta" not in self.args.model_type:
+            if "bert" in  self.args.model_type:
                 assert len(token_type_ids) == MAX_LEN, "Error with input length {} vs {}".format(len(token_type_ids), MAX_LEN)
-            if "roberta" not in self.args.model_type:
+            if "bert" in  self.args.model_type:
                 choices_features.append({
                     "input_ids": input_ids,
                     "attention_mask": attention_mask,
@@ -138,7 +143,7 @@ class PIQADataset:
                 
 
             input_ids = inputs["input_ids"]
-            if "roberta" not in self.args.model_type:
+            if "bert" in  self.args.model_type:
                 token_type_ids = inputs["token_type_ids"]
             attention_mask = [1] * len(input_ids)
 
@@ -146,14 +151,14 @@ class PIQADataset:
             padding_length = MAX_LEN - len(input_ids)
             input_ids = input_ids + ([pad_token_id] * padding_length)
             attention_mask = attention_mask + ([0] * padding_length)
-            if "roberta" not in self.args.model_type:
+            if "bert" in  self.args.model_type:
                 token_type_ids = token_type_ids + ([pad_token_id] * padding_length)
 
             assert len(input_ids) == MAX_LEN, "Error with input length {} vs {}".format(len(input_ids), MAX_LEN)
             assert len(attention_mask) == MAX_LEN, "Error with input length {} vs {}".format(len(attention_mask), MAX_LEN)
-            if "roberta" not in self.args.model_type:
+            if "bert" in  self.args.model_type:
                 assert len(token_type_ids) == MAX_LEN, "Error with input length {} vs {}".format(len(token_type_ids), MAX_LEN)
-            if "roberta" not in self.args.model_type:
+            if "bert" in self.args.model_type:
                 choices_features.append({
                     "input_ids": input_ids,
                     "attention_mask": attention_mask,
@@ -167,7 +172,7 @@ class PIQADataset:
 
         label = label_map.get(x["answer_key"], -1)
         label = torch.tensor(label).long()
-        if "roberta" not in self.args.model_type:
+        if "bert" in  self.args.model_type:
             return {
                     "id": x["id"],
                     "label": label,
@@ -205,6 +210,11 @@ def get_dataloader(model_type, batch_size, args):
         train.data = train.data[:args.shots]
     else:
         train.data = train.data[:cutoff]
+
+    ids= []
+    for d in train.data:
+        ids.append(d['id'])
+    # print(ids)
 
     
     val = PIQADataset('piqa/valid.jsonl', 'piqa/valid-labels.lst', tokenizer, args)
@@ -255,37 +265,46 @@ class Model_PIQA(Model):
     def test_epoch_end(self, outputs):
         # print(outputs)
         if self.trainer.use_dp:
-            test_acc = sum([torch.mean(out["correct_count"].float()) for out in outputs]).float()\
+            test_acc = sum([torch.sum(out["correct_count"].float()) for out in outputs]).float()\
                     /\
-                    sum(torch.mean(out["batch_size"].float()) for out in outputs)
+                    sum(torch.sum(out["batch_size"].float()) for out in outputs)
             test_loss = sum([torch.mean(out["test_loss"].float()) for out in outputs]) / len(outputs)
 
-            results = []
-            index = 0
-            for out in outputs:
-                # print(out['ids'])
-                for i, idd in enumerate(out['predict']):
-                    results.append({'id': index, 'pred': int(out['predict'][i]), 'label': int(out['labels'][i])})
-                    index+=1
-            with open('pred_bert.jsonl', 'w') as outfile:
-                for entry in results:
-                    json.dump(entry, outfile)
-                    outfile.write('\n')
+            # results = []
+            # index = 0
+            # for out in outputs:
+            #     # print(out['ids'])
+            #     for i, idd in enumerate(out['predict']):
+            #         results.append({'id': index, 'pred': int(out['predict'][i]), 'label': int(out['labels'][i])})
+            #         index+=1
+            # with open('pred_bert.jsonl', 'w') as outfile:
+            #     for entry in results:
+            #         json.dump(entry, outfile)
+            #         outfile.write('\n')
 
-            with open('pred_robertalarge_piqa.jsonl' ,'r')  as f:
-                roberta = []
-                for d in f:
-                    roberta.append(json.loads(d))
-            easy = []
-            hard = []
-            for res, rob in zip(results, roberta):
-                assert res['id'] == rob['id']
-                if rob['pred'] == rob['label']:
-                    easy.append(res['pred'] == res['label'])
-                else:
-                    hard.append(res['pred'] == res['label']) 
+            # with open('pred_robertalarge_piqa.jsonl' ,'r')  as f:
+            #     roberta = []
+            #     for d in f:
+            #         roberta.append(json.loads(d))
+            # easy = []
+            # hard = []
+            # for res, rob in zip(results, roberta):
+            #     assert res['id'] == rob['id']
+            #     if rob['pred'] == rob['label']:
+            #         easy.append(res['pred'] == res['label'])
+            #     else:
+            #         hard.append(res['pred'] == res['label']) 
 
-            print("easy: ", np.mean(easy), 'hard:', np.mean(hard))
+            # print("easy: ", np.mean(easy), 'hard:', np.mean(hard))
+
+            # correct = 0
+            # total = 0
+            # for res in results:
+            #     if res['pred'] == res['label']:
+            #         correct += 1
+            #     total += 1
+
+            # print("acc: ", correct / total)
 
             # with open('pred_robertalarge_piqa.jsonl' ,'r')  as f:
             #     roberta = []
@@ -309,6 +328,7 @@ class Model_PIQA(Model):
                 "test_loss": test_loss,
                 "test_acc": test_acc,
                 }
+        print("acc: ", test_acc.item())
             
         return {"progress_bar": tqdm_dict, "log": tqdm_dict, "test_loss": test_loss}
 
@@ -326,7 +346,7 @@ class Model_PIQA(Model):
 
 if __name__ == "__main__":
                         
-    # srun --gres=gpu:8000:1 python piqa.py --gpus 1  --output_dir piqa_test --seed 42 --model-type roberta-large
+    # srun --gres=gpu:8000:1 python piqa.py --gpus 1  --seed 42 --model-type roberta-large
     args = parse_args()
 
 
@@ -345,7 +365,7 @@ if __name__ == "__main__":
         filename= "{epoch}-{val_loss:.6f}",
         monitor="val_loss",
         mode="min",
-        save_top_k=20,
+        save_top_k=1,
     )
 
     if args.test_run:

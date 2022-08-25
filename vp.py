@@ -8,7 +8,7 @@ import random
 import numpy as np
 
 import lineflow.datasets as lfds
-from transformers import BertModel, BertTokenizer, RobertaTokenizer, RobertaModel
+from transformers import BertModel, BertTokenizer, RobertaTokenizer, RobertaModel, CLIPTokenizer
 from transformers import AdamW, get_linear_schedule_with_warmup
 
 
@@ -25,6 +25,7 @@ from models import Model
 from params import parse_args
 
 MAX_LEN = 128
+MAX_LEN = 76
 NUM_LABELS = 2
 label_map = {"same": 1, "different": 0}
 
@@ -35,7 +36,8 @@ tokenizer_dict = {
         "bert-large-uncased": BertTokenizer.from_pretrained("bert-large-uncased", do_lower_case=True, return_token_type_ids=True),
         "bert-base-cased": BertTokenizer.from_pretrained("bert-base-cased", do_lower_case=True, return_token_type_ids=True),
         "roberta-base": RobertaTokenizer.from_pretrained("roberta-base"),
-        "roberta-large": RobertaTokenizer.from_pretrained("roberta-large")
+        "roberta-large": RobertaTokenizer.from_pretrained("roberta-large"),
+        "clip": CLIPTokenizer.from_pretrained("openai/clip-vit-large-patch14")
         }
 
 class VPDataset:
@@ -80,7 +82,7 @@ class VPDataset:
                     )
 
             input_ids = inputs["input_ids"]
-            if "roberta" not in self.args.model_type:
+            if "bert" in self.args.model_type:
                 token_type_ids = inputs["token_type_ids"]
             attention_mask = [1] * len(input_ids)
 
@@ -88,14 +90,14 @@ class VPDataset:
             padding_length = MAX_LEN - len(input_ids)
             input_ids = input_ids + ([pad_token_id] * padding_length)
             attention_mask = attention_mask + ([0] * padding_length)
-            if "roberta" not in self.args.model_type:
+            if "bert" in  self.args.model_type:
                 token_type_ids = token_type_ids + ([pad_token_id] * padding_length)
 
             assert len(input_ids) == MAX_LEN, "Error with input length {} vs {}".format(len(input_ids), MAX_LEN)
             assert len(attention_mask) == MAX_LEN, "Error with input length {} vs {}".format(len(attention_mask), MAX_LEN)
-            if "roberta" not in self.args.model_type:
+            if "bert" in  self.args.model_type:
                 assert len(token_type_ids) == MAX_LEN, "Error with input length {} vs {}".format(len(token_type_ids), MAX_LEN)
-            if "roberta" not in self.args.model_type:
+            if "bert" in  self.args.model_type:
                 choices_features.append({
                     "input_ids": input_ids,
                     "attention_mask": attention_mask,
@@ -127,7 +129,7 @@ class VPDataset:
         
 
         input_ids = inputs["input_ids"]
-        if "roberta" not in self.args.model_type:
+        if "bert" in self.args.model_type:
             token_type_ids = inputs["token_type_ids"]
         attention_mask = [1] * len(input_ids)
 
@@ -135,14 +137,14 @@ class VPDataset:
         padding_length = MAX_LEN - len(input_ids)
         input_ids = input_ids + ([pad_token_id] * padding_length)
         attention_mask = attention_mask + ([0] * padding_length)
-        if "roberta" not in self.args.model_type:
+        if "bert" in  self.args.model_type:
             token_type_ids = token_type_ids + ([pad_token_id] * padding_length)
 
         assert len(input_ids) == MAX_LEN, "Error with input length {} vs {}".format(len(input_ids), MAX_LEN)
         assert len(attention_mask) == MAX_LEN, "Error with input length {} vs {}".format(len(attention_mask), MAX_LEN)
-        if "roberta" not in self.args.model_type:
+        if "bert" in self.args.model_type:
             assert len(token_type_ids) == MAX_LEN, "Error with input length {} vs {}".format(len(token_type_ids), MAX_LEN)
-        if "roberta" not in self.args.model_type:
+        if "bert" in  self.args.model_type:
             choices_features.append({
                 "input_ids": input_ids,
                 "attention_mask": attention_mask,
@@ -156,7 +158,7 @@ class VPDataset:
 
         label = label_map.get(x["label"], -1)
         label = torch.tensor(label).float()
-        if "roberta" not in self.args.model_type:
+        if "bert" in  self.args.model_type:
             return {
                     "id": x["id"],
                     "label": label,
@@ -264,14 +266,14 @@ class Model_VP(Model):
     def training_step(self, batch, batch_idx):
         input_ids = batch["input_ids"]
         attention_mask = batch["attention_mask"]
-        if "roberta" not in self.hparams.model_type:
+        if "bert" in  self.hparams.model_type:
             token_type_ids = batch["token_type_ids"]
         labels = batch["label"]
 
         logits = self.model(
                 input_ids,
                 attention_mask=attention_mask,
-                token_type_ids=token_type_ids if "roberta" not in self.hparams.model_type  else None,
+                token_type_ids=token_type_ids if "bert"  in self.hparams.model_type  else None,
                 )
 
         num_choices = input_ids.shape[1]
@@ -309,14 +311,14 @@ class Model_VP(Model):
     def validation_step(self, batch, batch_idx):
         input_ids = batch["input_ids"]
         attention_mask = batch["attention_mask"]
-        if "roberta" not in self.hparams.model_type:
+        if "bert" in  self.hparams.model_type:
             token_type_ids = batch["token_type_ids"]
         labels = batch["label"]
 
         logits = self.model(
                 input_ids,
                 attention_mask=attention_mask,
-                token_type_ids=token_type_ids if "roberta" not in self.hparams.model_type else None,
+                token_type_ids=token_type_ids if "bert" in  self.hparams.model_type else None,
                 )
         num_choices = input_ids.shape[1]
         batch_size = input_ids.shape[0]
@@ -356,7 +358,7 @@ class Model_VP(Model):
     def test_step(self, batch, batch_idx):
         input_ids = batch["input_ids"]
         attention_mask = batch["attention_mask"]
-        if "roberta" not in self.hparams.model_type:
+        if "bert" in  self.hparams.model_type:
             token_type_ids = batch["token_type_ids"]
         labels = batch["label"]
         ids = batch['id']
@@ -364,7 +366,7 @@ class Model_VP(Model):
         logits = self.model(
                 input_ids,
                 attention_mask=attention_mask,
-                token_type_ids=token_type_ids if "roberta" not in self.hparams.model_type else None,
+                token_type_ids=token_type_ids if "bert" in  self.hparams.model_type else None,
                 )
         num_choices = input_ids.shape[1]
         batch_size = input_ids.shape[0]

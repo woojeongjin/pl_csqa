@@ -1,0 +1,7 @@
+jsonlines==3.1.0
+lineflow==0.6.4
+numpy==1.23.2
+pytorch_lightning==1.2.5
+scipy==1.4.1
+torch==1.7.1
+transformers==4.20.0

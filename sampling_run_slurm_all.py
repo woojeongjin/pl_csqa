@@ -63,3 +63,4 @@ with open(args.train_file.split(".")[0] + "_" + args.load.split('/')[-3] + ".txt
 # srun --gres=gpu:1  -t 1000 python sampling_run_slurm_all.py --train_file vp.py  --load  /home/woojeong2/VidLanKD/snap/bert/vlbert_large_continue/checkpoint-epoch0009/pytorch_model.bin
 
 # srun --gres=gpu:1 --qos general  -t 1000 python sampling_run_slurm_all.py --train_file snli.py  --load  /home/woojeong2/VidLanKD/snap/bert/clmodel/checkpoint-epoch0009/pytorch_model.bin
+# srun --gres=gpu:1 --qos general  -t 1000 python sampling_run_slurm_all.py --train_file obqa.py  --load  

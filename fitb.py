@@ -592,7 +592,7 @@ def set_seed(seed):
 if __name__ == "__main__":
     parser = ArgumentParser()
     parser.add_argument("--note", type=str, default=None)
-    parser.add_argument("--gpus", type=int, default=2)
+    parser.add_argument("--gpus", type=int, default=1)
     parser.add_argument("--seed", type=int, default=9595)
     parser.add_argument("--test-run", action="store_true")
     parser.add_argument("--test_only", action="store_true")

@@ -15,8 +15,9 @@ from models import Model
 from params import parse_args
 
 import json
+import random
 
-MAX_LEN = 50
+MAX_LEN = 40
 NUM_LABELS = 5
 label_map = {"1": 0, "2": 1, "3": 2, "4": 3, "5": 4}
 
@@ -68,7 +69,7 @@ class RiddleSenseDataset:
                 )
 
             input_ids = inputs["input_ids"]
-            if "roberta" not in self.args.model:
+            if "roberta" not in self.args.model_type:
                 token_type_ids = inputs["token_type_ids"]
             attention_mask = [1] * len(input_ids)
 
@@ -76,16 +77,16 @@ class RiddleSenseDataset:
             padding_length = MAX_LEN - len(input_ids)
             input_ids = input_ids + ([pad_token_id] * padding_length)
             attention_mask = attention_mask + ([0] * padding_length)
-            if "roberta" not in self.args.model:
+            if "roberta" not in self.args.model_type:
                 token_type_ids = token_type_ids + ([pad_token_id] * padding_length)
 
             assert len(input_ids) == MAX_LEN, "Error with input length {} vs {}".format(len(input_ids), MAX_LEN)
             assert len(attention_mask) == MAX_LEN, "Error with input length {} vs {}".format(len(attention_mask),
                                                                                              MAX_LEN)
-            if "roberta" not in self.args.model:
+            if "roberta" not in self.args.model_type:
                 assert len(token_type_ids) == MAX_LEN, "Error with input length {} vs {}".format(len(token_type_ids),
                                                                                                  MAX_LEN)
-            if "roberta" not in self.args.model:
+            if "roberta" not in self.args.model_type:
                 choices_features.append({
                     "input_ids": input_ids,
                     "attention_mask": attention_mask,
@@ -118,7 +119,7 @@ class RiddleSenseDataset:
                 )
 
             input_ids = inputs["input_ids"]
-            if "roberta" not in self.args.model:
+            if "roberta" not in self.args.model_type:
                 token_type_ids = inputs["token_type_ids"]
             attention_mask = [1] * len(input_ids)
 
@@ -126,16 +127,16 @@ class RiddleSenseDataset:
             padding_length = MAX_LEN - len(input_ids)
             input_ids = input_ids + ([pad_token_id] * padding_length)
             attention_mask = attention_mask + ([0] * padding_length)
-            if "roberta" not in self.args.model:
+            if "roberta" not in self.args.model_type:
                 token_type_ids = token_type_ids + ([pad_token_id] * padding_length)
 
             assert len(input_ids) == MAX_LEN, "Error with input length {} vs {}".format(len(input_ids), MAX_LEN)
             assert len(attention_mask) == MAX_LEN, "Error with input length {} vs {}".format(len(attention_mask),
                                                                                              MAX_LEN)
-            if "roberta" not in self.args.model:
+            if "roberta" not in self.args.model_type:
                 assert len(token_type_ids) == MAX_LEN, "Error with input length {} vs {}".format(len(token_type_ids),
                                                                                                  MAX_LEN)
-            if "roberta" not in self.args.model:
+            if "roberta" not in self.args.model_type:
                 choices_features.append({
                     "input_ids": input_ids,
                     "attention_mask": attention_mask,
@@ -149,7 +150,7 @@ class RiddleSenseDataset:
 
         label = label_map.get(x["answer_key"], -1)
         label = torch.tensor(label).long()
-        if "roberta" not in self.args.model:
+        if "roberta" not in self.args.model_type:
             return {
                 "id": x["id"],
                 "label": label,
@@ -172,6 +173,15 @@ from transformers import AutoModel, AutoTokenizer
 def get_dataloader(model, batch_size, args):
     tokenizer = AutoTokenizer.from_pretrained(model)
     train = RiddleSenseDataset('riddle_sense/train.jsonl', 'riddle_sense/train-labels.lst', tokenizer, args)
+
+    cutoff = int(len(train.data) * (args.percentage/100))
+    random.seed(args.dataseed)
+    random.shuffle(train.data)
+    if args.shots != 0:
+        train.data = train.data[:args.shots]
+    else:
+        train.data = train.data[:cutoff]
+
     val = RiddleSenseDataset('riddle_sense/dev.jsonl', 'riddle_sense/dev-labels.lst', tokenizer, args)
     test = RiddleSenseDataset('riddle_sense/test.jsonl', 'riddle_sense/test-labels.lst', tokenizer, args)
 
@@ -205,26 +215,26 @@ class Model_riddlesense(Model):
 
     def test_epoch_end(self, outputs):
         if self.trainer.use_dp:
-            test_acc = sum([torch.mean(out["correct_count"].float()) for out in outputs]).float() \
+            test_acc = sum([torch.sum(out["correct_count"].float()) for out in outputs]).float() \
                        / \
-                       sum(torch.mean(out["batch_size"].float()) for out in outputs)
+                       sum(torch.sum(out["batch_size"].float()) for out in outputs)
             test_loss = sum([torch.mean(out["test_loss"].float()) for out in outputs]) / len(outputs)
 
-            results = []
-            index = 0
-            for out in outputs:
-                for i, idd in enumerate(out['predict']):
-                    results.append({'id': index, 'pred': int(out['predict'][i]), 'label': int(out['labels'][i])})
-                    index += 1
+            # results = []
+            # index = 0
+            # for out in outputs:
+            #     for i, idd in enumerate(out['predict']):
+            #         results.append({'id': index, 'pred': int(out['predict'][i]), 'label': int(out['labels'][i])})
+            #         index += 1
 
-            correct = 0
-            total = 0
-            for res in results:
-                if res['pred'] == res['label']:
-                    correct += 1
-                total += 1
+            # correct = 0
+            # total = 0
+            # for res in results:
+            #     if res['pred'] == res['label']:
+            #         correct += 1
+            #     total += 1
 
-            print("acc: ", correct/total)
+            # print("acc: ", correct/total)
         else:
             test_acc = sum([out["correct_count"] for out in outputs]).float() / sum(
                 out["batch_size"] for out in outputs)
@@ -234,6 +244,7 @@ class Model_riddlesense(Model):
             "test_loss": test_loss,
             "test_acc": test_acc,
         }
+        print("acc: ", test_acc.item())
 
         return {"progress_bar": tqdm_dict, "log": tqdm_dict, "test_loss": test_loss}
 
@@ -256,7 +267,7 @@ if __name__ == "__main__":
         filename="{epoch}-{val_loss:.6f}",
         monitor="val_loss",
         mode="min",
-        save_top_k=20,
+        save_top_k=1,
         verbose=True,
     )
 

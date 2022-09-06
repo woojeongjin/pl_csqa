@@ -41,7 +41,8 @@ tokenizer_dict = {
         "bert-large-uncased": BertTokenizer.from_pretrained("bert-large-uncased", do_lower_case=True, return_token_type_ids=True),
         "roberta-base": RobertaTokenizer.from_pretrained("roberta-base"),
         "roberta-large": RobertaTokenizer.from_pretrained("roberta-large"),
-        "clip": CLIPTokenizer.from_pretrained("openai/clip-vit-large-patch14")
+        # "clip": CLIPTokenizer.from_pretrained("openai/clip-vit-large-patch14")
+        "clip": CLIPTokenizer.from_pretrained("openai/clip-vit-base-patch32")
         }
 
 class PIQADataset:
@@ -270,17 +271,17 @@ class Model_PIQA(Model):
                     sum(torch.sum(out["batch_size"].float()) for out in outputs)
             test_loss = sum([torch.mean(out["test_loss"].float()) for out in outputs]) / len(outputs)
 
-            # results = []
-            # index = 0
-            # for out in outputs:
-            #     # print(out['ids'])
-            #     for i, idd in enumerate(out['predict']):
-            #         results.append({'id': index, 'pred': int(out['predict'][i]), 'label': int(out['labels'][i])})
-            #         index+=1
-            # with open('pred_bert.jsonl', 'w') as outfile:
-            #     for entry in results:
-            #         json.dump(entry, outfile)
-            #         outfile.write('\n')
+            results = []
+            index = 0
+            for out in outputs:
+                # print(out['ids'])
+                for i, idd in enumerate(out['predict']):
+                    results.append({'id': index, 'pred': int(out['predict'][0][i]), 'label': int(out['labels'][0][i])})
+                    index+=1
+            with open('pred_bert_piqa.jsonl', 'w') as outfile:
+                for entry in results:
+                    json.dump(entry, outfile)
+                    outfile.write('\n')
 
             # with open('pred_robertalarge_piqa.jsonl' ,'r')  as f:
             #     roberta = []

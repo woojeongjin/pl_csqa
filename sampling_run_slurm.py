@@ -26,7 +26,7 @@ for seed in seeds:
             " --learning-rate " +  str(args.lr) + \
             " --shots " +  str(args.shots) + \
             " --percentage " + str(args.percentage) + \
-            " --dataseed " + seed + " > " + log_file
+            " --dataseed " + seed + " --max-nb-epochs 30 " + " > " + log_file
     else:
         log_file = args.train_file.split(".")[0] + "_" + args.load.split('/')[-3] + "_" + str(args.percentage) + "_" + str(args.shots) + "_" + seed + ".txt"
 
@@ -36,7 +36,7 @@ for seed in seeds:
             " --learning-rate " +  str(args.lr) + \
             " --shots " +  str(args.shots) + \
             " --percentage " + str(args.percentage) + \
-            " --dataseed " + seed + " > " + log_file
+            " --dataseed " + seed + " --max-nb-epochs 30 " + " > " + log_file
     log_files.append(log_file)
 
     print(predict_cmd, "\n")
@@ -100,5 +100,8 @@ with open(args.train_file.split(".")[0] + "_" + args.load.split('/')[-3] + "_" +
 
 
 
+# --model-type
 
-# srun --gres=gpu:1  --qos general -t 1000 python sampling_run_slurm.py --train_file swag.py --shots 128 --lr 3e-4  --load /home/woojeong2/VidLanKD/snap/bert/clmodel/checkpoint-epoch0009/pytorch_model.bin
+
+# srun --gres=gpu:1  --qos general -t 1000 python sampling_run_slurm.py   --lr 3e-4  --load /home/woojeong2/VidLanKD/snap/bert/vidlankd_original/checkpoint-epoch0009/pytorch_model.bin  --train_file vp.py --shots 64
+

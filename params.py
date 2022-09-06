@@ -18,7 +18,7 @@ def parse_args():
     parser.add_argument("--batch-size", type=int, default=32)
     parser.add_argument("--max-nb-epochs", type=int, default=15)
     parser.add_argument("--min-nb-epochs", type=int, default=1)
-    parser.add_argument("--learning-rate", type=float, default=3e-4)
+    parser.add_argument("--learning-rate", type=float, default=5e-5)
     parser.add_argument("--weight-decay", type=float, default=0.01)
     parser.add_argument("--adam-eps", type=float, default=1e-06)
     parser.add_argument("--warmup-steps", type=int, default=150)

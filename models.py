@@ -448,9 +448,9 @@ class Model(pl.LightningModule):
                 "test_loss": loss,
                 "correct_count": correct_count,
                 "batch_size": batch_size,
-                # "ids": ids,
-                # "predict": labels_hat.cpu().numpy(),
-                # "labels": labels.cpu().numpy()
+                "ids": ids,
+                "predict": labels_hat.cpu().numpy(),
+                "labels": labels.cpu().numpy()
                 })
 
         return output
@@ -465,9 +465,10 @@ class Model(pl.LightningModule):
             test_loss = sum([torch.mean(out["test_loss"].float()) for out in outputs]) / len(outputs)
 
             results = []
-            # for out in outputs:
-            #     for i, idd in enumerate(out['ids']):
-            #         results.append({'id': idd, 'pred': int(out['predict'][i]), 'label': int(out['labels'][i])})
+            for out in outputs:
+                for i, idd in enumerate(out['ids']):
+                    results.append({'id': idd, 'pred': int(out['predict'][0][i]), 'label': int(out['labels'][0][i])})
+            print(results)
             # with open('pred_bert.jsonl', 'w') as outfile:
             #     for entry in results:
             #         json.dump(entry, outfile)

@@ -183,12 +183,17 @@ class OBQADataset:
 
 def get_dataloader(model_type, batch_size, args):
     tokenizer = tokenizer_dict[model_type]
-    if args.low_20:
-        train = OBQADataset('obqa/train_20.jsonl', tokenizer, args)
-    elif args.low_50:
-        train = OBQADataset('obqa/train_50.jsonl', tokenizer, args)
+
+    train = OBQADataset('obqa/train.jsonl', tokenizer, args)
+
+    cutoff = int(len(train.data) * (args.percentage/100))
+    random.seed(args.dataseed)
+    random.shuffle(train.data)
+    if args.shots != 0:
+        train.data = train.data[:args.shots]
     else:
-        train = OBQADataset('obqa/train.jsonl', tokenizer, args)
+        train.data = train.data[:cutoff]
+
     val = OBQADataset('obqa/dev.jsonl', tokenizer, args)
     test = OBQADataset('obqa/test.jsonl', tokenizer, args)
     # with open('csqa/dev_rand_split.jsonl', 'r') as f:
@@ -257,34 +262,45 @@ class Model_OBQA(Model):
 
     def test_epoch_end(self, outputs):
         if self.trainer.use_dp:
-            test_acc = sum([torch.mean(out["correct_count"].float()) for out in outputs]).float()\
+            test_acc = sum([torch.sum(out["correct_count"].float()) for out in outputs]).float()\
                     /\
-                    sum(torch.mean(out["batch_size"].float()) for out in outputs)
+                    sum(torch.sum(out["batch_size"].float()) for out in outputs)
             test_loss = sum([torch.mean(out["test_loss"].float()) for out in outputs]) / len(outputs)
 
-            results = []
-            for out in outputs:
-                for i, idd in enumerate(out['ids']):
-                    results.append({'id': idd, 'pred': int(out['predict'][i]), 'label': int(out['labels'][i])})
-            # with open('pred_roberta_large_obqa.jsonl', 'w') as outfile:
-            #     for entry in results:
-            #         json.dump(entry, outfile)
-            #         outfile.write('\n')
+            # results = []
+            # for out in outputs:
+            #     for i, idd in enumerate(out['ids']):
+            #         results.append({'id': idd, 'pred': int(out['predict'][i]), 'label': int(out['labels'][i])})
+            # # with open('pred_roberta_large_obqa.jsonl', 'w') as outfile:
+            # #     for entry in results:
+            # #         json.dump(entry, outfile)
+            # #         outfile.write('\n')
 
-            with open('pred_roberta_large_obqa.jsonl' ,'r')  as f:
-                roberta = []
-                for d in f:
-                    roberta.append(json.loads(d))
-            easy = []
-            hard = []
-            for res, rob in zip(results, roberta):
-                assert res['id'] == rob['id']
-                if rob['pred'] == rob['label']:
-                    easy.append(res['pred'] == res['label'])
-                else:
-                    hard.append(res['pred'] == res['label']) 
+            # with open('pred_roberta_large_obqa.jsonl' ,'r')  as f:
+            #     roberta = []
+            #     for d in f:
+            #         roberta.append(json.loads(d))
+            # easy = []
+            # hard = []
+            # for res, rob in zip(results, roberta):
+            #     assert res['id'] == rob['id']
+            #     if rob['pred'] == rob['label']:
+            #         easy.append(res['pred'] == res['label'])
+            #     else:
+            #         hard.append(res['pred'] == res['label']) 
 
-            print("easy: ", np.mean(easy), 'hard:', np.mean(hard))
+            # print("easy: ", np.mean(easy), 'hard:', np.mean(hard))
+
+            # correct = 0
+            # total = 0
+            # for res in results:
+            #     if res['pred'] == res['label']:
+            #         correct += 1
+            #     total += 1
+
+            # print("acc: ", correct / total)
+
+
 
 
         else:
@@ -294,7 +310,8 @@ class Model_OBQA(Model):
                 "test_loss": test_loss,
                 "test_acc": test_acc,
                 }
-            
+        
+        print("acc: ", test_acc.item())
         return {"progress_bar": tqdm_dict, "log": tqdm_dict, "test_loss": test_loss}
 
 
@@ -336,7 +353,7 @@ if __name__ == "__main__":
         filename= "{epoch}-{val_loss:.6f}",
         monitor="val_loss",
         mode="min",
-        save_top_k=20,
+        save_top_k=1,
         verbose=True,
     )
 

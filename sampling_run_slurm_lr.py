@@ -70,4 +70,4 @@ print(acc_scores)
 
 
 
-# srun --gres=gpu:1  --qos general -t 1000 python sampling_run_slurm_lr.py --train_file snli.py --shots 64 --lr 3e-4  --load /home/woojeong2/vok_pretraining/snap/vlpretrain/bert_resnext_combined10_lmperturb_cl_multi_neg_synsets_1614_norandomneg/Step12000/pytorch_model.bin
+# srun --gres=gpu:1  --qos general -t 1000 python sampling_run_slurm_lr.py --train_file piqa.py --shots 64 --lr 3e-4  --load /home/woojeong2/vok_pretraining/snap/vlpretrain/bert_resnext_combined10_lmperturb_cl_multi_neg_synsets_1614_withpos_norandomneg_large/Step20000/pytorch_model.bin

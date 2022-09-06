@@ -10,7 +10,7 @@ import numpy as np
 import lineflow.datasets as lfds
 from transformers import BertModel, BertTokenizer, RobertaTokenizer, RobertaModel, CLIPTokenizer
 from transformers import AdamW, get_linear_schedule_with_warmup
-
+import transformers
 
 import torch
 import torch.nn as nn
@@ -23,6 +23,8 @@ from functools import lru_cache
 
 from models import Model
 from params import parse_args
+
+transformers.logging.set_verbosity_error()
 
 MAX_LEN = 128
 MAX_LEN = 76
@@ -37,7 +39,8 @@ tokenizer_dict = {
         "bert-base-cased": BertTokenizer.from_pretrained("bert-base-cased", do_lower_case=True, return_token_type_ids=True),
         "roberta-base": RobertaTokenizer.from_pretrained("roberta-base"),
         "roberta-large": RobertaTokenizer.from_pretrained("roberta-large"),
-        "clip": CLIPTokenizer.from_pretrained("openai/clip-vit-large-patch14")
+        # "clip": CLIPTokenizer.from_pretrained("openai/clip-vit-large-patch14")
+        "clip": CLIPTokenizer.from_pretrained("openai/clip-vit-base-patch32")
         }
 
 class VPDataset:
@@ -412,10 +415,19 @@ class Model_VP(Model):
                     sum(torch.mean(out["batch_size"].float()) for out in outputs)
             test_loss = sum([torch.mean(out["test_loss"].float()) for out in outputs]) / len(outputs)
 
+
+            
+
             results = []
             for out in outputs:
                 for i, idd in enumerate(out['ids']):
-                    results.append({'id': idd, 'pred': int(out['predict'][i]), 'label': int(out['labels'][i])})
+                    results.append({'id': int(idd), 'pred': int(out['predict'][i]), 'label': int(out['labels'][i])})
+
+            print(results)
+            with open('pred_clip_vp.jsonl', 'w') as outfile:
+                for entry in results:
+                    json.dump(entry, outfile)
+                    outfile.write('\n')
             # with open('pred_roberta_large_obqa.jsonl', 'w') as outfile:
             #     for entry in results:
             #         json.dump(entry, outfile)
